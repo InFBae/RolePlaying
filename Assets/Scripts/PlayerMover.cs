@@ -5,10 +5,13 @@ using UnityEngine.InputSystem;
 
 public class PlayerMover : MonoBehaviour
 {
-    
+    [SerializeField] bool debug;
+
     [SerializeField] private float walkSpeed;
     [SerializeField] private float runSpeed;
     [SerializeField] private float jumpSpeed;
+    [SerializeField] float walkStepRange;
+    [SerializeField] float runStepRange;
 
     private CharacterController controller;
     private Animator animator;
@@ -25,12 +28,15 @@ public class PlayerMover : MonoBehaviour
 
     private void OnEnable()
     {
+        Cursor.lockState = CursorLockMode.Locked;
         StartCoroutine(MoveRoutine());
         StartCoroutine(JumpRoutine());
     }
 
+
     private void OnDisable()
     {
+        Cursor.lockState = CursorLockMode.None;
         StopAllCoroutines();
     }
 
@@ -39,6 +45,8 @@ public class PlayerMover : MonoBehaviour
         moveDir.x = input.Get<Vector2>().x;
         moveDir.z = input.Get<Vector2>().y;
     }
+
+    float lastStepTime = 0.5f;
 
     IEnumerator MoveRoutine()
     {
@@ -69,12 +77,29 @@ public class PlayerMover : MonoBehaviour
             controller.Move(moveDir.z * forwardVec * curSpeed * Time.deltaTime);
             controller.Move(moveDir.x * rightVec * curSpeed * Time.deltaTime);
             animator.SetFloat("MoveSpeed", curSpeed);
+            
             Quaternion lookRotation = Quaternion.LookRotation(forwardVec * moveDir.z + rightVec * moveDir.x);
-
             transform.rotation = Quaternion.Lerp(transform.rotation, lookRotation, 0.05f);
+
+            lastStepTime -= Time.deltaTime;
+            if (lastStepTime < 0)
+            {
+                lastStepTime = 0.5f;
+                GenerateFootStepSound();
+            }
 
             yield return null;
         }    
+    }
+
+    private void GenerateFootStepSound()
+    {
+        Collider[] colliders = Physics.OverlapSphere(transform.position, walk ? walkStepRange : runStepRange);
+        foreach (Collider collider in colliders)
+        {
+            IListenable listenable = collider.GetComponent<IListenable>();
+            listenable?.Listen(transform);
+        }
     }
 
     private void OnJump(InputValue input)
@@ -104,7 +129,17 @@ public class PlayerMover : MonoBehaviour
     private bool GroundCheck()
     {
         RaycastHit hit;
-        return Physics.SphereCast(transform.position + Vector3.up * 1, 0.5f, Vector3.down, out hit, 0.5f);
+        return Physics.SphereCast(transform.position + Vector3.up * 0.9f, 0.5f, Vector3.down, out hit, 0.5f);
     }
-    
+
+    private void OnDrawGizmosSelected()
+    {
+        if (!debug) return;
+
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawWireSphere(transform.position, walkStepRange);
+        Gizmos.DrawWireSphere(transform.position, runStepRange);
+
+    }
+
 }
