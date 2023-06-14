@@ -23,11 +23,11 @@ public class PlayerAttacker : MonoBehaviour
 
     private void OnAttack(InputValue input)
     {
-        Attack();
-        /*if (!isAttacking)
+        //Attack();
+        if (!isAttacking)
         {
             attackRoutine = StartCoroutine(AttackRoutine());
-        }*/
+        }
         
     }
 
